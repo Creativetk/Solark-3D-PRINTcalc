@@ -151,10 +151,14 @@
                     </div>
                 </div>
 
-                <!-- Kargo ve İndirim (Sipariş Geneli) -->
-                <div class="grid grid-cols-2 gap-4 mt-4 border-t border-slate-100 pt-4">
+                <!-- Platform, Kargo ve İndirim -->
+                <div class="grid grid-cols-3 gap-4 mt-4 border-t border-slate-100 pt-4">
                     <div>
-                        <label class="block text-xs font-medium text-purple-600">Kargo & Paketleme (Toplam / ₺)</label>
+                        <label class="block text-xs font-medium text-orange-600">Mağaza Komisyonu (%)</label>
+                        <input type="number" id="platformCommission" value="0" class="w-full px-3 py-2 border border-orange-200 rounded-lg mt-1 bg-orange-50" oninput="calculate(); hideCode()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-purple-600">Kargo (Top. ₺)</label>
                         <input type="number" id="shippingCost" value="0" class="w-full px-3 py-2 border border-purple-200 rounded-lg mt-1 bg-purple-50" oninput="calculate(); hideCode()">
                     </div>
                     <div>
@@ -164,7 +168,7 @@
                 </div>
                 
                 <div class="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-500 leading-relaxed">
-                    <strong>Not:</strong> Ek Donanım maliyeti 1 adet ürüne eklenirken, Kargo ve İndirim en son çıkan <strong>Genel Sipariş Toplamı</strong> üzerinden hesaplanır.
+                    <strong>Not:</strong> Mağaza Komisyonu, hedeflediğiniz kârı koruyacak şekilde <strong>Akıllı (Gross-up) formül</strong> ile fiyatı yukarı çeker. Kargo ve İndirim ise en son çıkan sipariş toplamına uygulanır.
                 </div>
             </div>
 
@@ -195,7 +199,7 @@
             <div class="bg-slate-900 p-6 rounded-2xl shadow-lg text-white print-bg-white">
                 <h2 class="text-sm font-medium text-slate-400 print-bg-white">1 Adet İçin Önerilen Satış Fiyatı</h2>
                 <div class="text-5xl font-black mt-2 text-blue-400 print-bg-white">₺<span id="finalPrice">0.00</span></div>
-                <p class="text-xs text-slate-500 mt-1 print-bg-white">*Kargo ve indirim hariç birim fiyattır.</p>
+                <p class="text-xs text-slate-500 mt-1 print-bg-white">*Kargo ve indirim hariç, platform komisyonu dahil birim fiyattır.</p>
                 
                 <div class="grid grid-cols-2 gap-4 mt-5 border-t border-slate-700 pt-5 print-bg-white">
                     <div>
@@ -238,7 +242,7 @@
             document.getElementById('displayAmount').innerText = amount;
         } else {
             methodContainer.classList.add('hidden');
-            orderBox.classList.remove('hidden'); // Kargo ve indirim olduğu için her zaman gösterelim
+            orderBox.classList.remove('hidden'); 
             document.getElementById('displayAmount').innerText = amount;
             document.getElementById('printMethod').value = 'single';
             checkMethod();
@@ -353,13 +357,11 @@
             randomStr += chars.charAt(Math.floor(Math.random() * chars.length));
         }
 
-        // İnisiyal baştaki bölüme eklendi (Örn: TK-KASK-20260904-...)
         const uniqueCode = `${initials}-${cleanName}-${dateStr}-${timeStr}-${randomStr}`;
         
         document.getElementById('finalCodeDisplay').innerText = uniqueCode;
         document.getElementById('generatedCodeBox').classList.remove('hidden');
         
-        // Verileri paketle
         const dataToSave = {
             code: uniqueCode,
             productName: document.getElementById('productName').value,
@@ -381,6 +383,7 @@
             laborRate: document.getElementById('laborRate').value,
             failureRate: document.getElementById('failureRate').value,
             profitMargin: document.getElementById('profitMargin').value,
+            platformCommission: document.getElementById('platformCommission').value,
             shippingCost: document.getElementById('shippingCost').value,
             discountPercent: document.getElementById('discountPercent').value
         };
@@ -421,6 +424,7 @@
                 document.getElementById('laborRate').value = data.laborRate || 150;
                 document.getElementById('failureRate').value = data.failureRate || 10;
                 document.getElementById('profitMargin').value = data.profitMargin || 100;
+                document.getElementById('platformCommission').value = data.platformCommission || 0;
                 document.getElementById('shippingCost').value = data.shippingCost || 0;
                 document.getElementById('discountPercent').value = data.discountPercent || 0;
 
@@ -454,9 +458,10 @@
         const bedCount = parseInt(document.getElementById('bedCount').value) || 1;
         
         const filPrice = parseFloat(document.getElementById('filamentPrice').value) || 0;
-        const hdwrCost = parseFloat(document.getElementById('extraHardware').value) || 0; // Yeni
-        const shipCost = parseFloat(document.getElementById('shippingCost').value) || 0; // Yeni
-        const discPct = parseFloat(document.getElementById('discountPercent').value) || 0; // Yeni
+        const hdwrCost = parseFloat(document.getElementById('extraHardware').value) || 0; 
+        const commPct = parseFloat(document.getElementById('platformCommission').value) || 0; // Komisyon Yüzdesi
+        const shipCost = parseFloat(document.getElementById('shippingCost').value) || 0; 
+        const discPct = parseFloat(document.getElementById('discountPercent').value) || 0; 
 
         const powerW = parseFloat(document.getElementById('powerConsumption').value) || 0;
         const elecPrice = parseFloat(document.getElementById('electricityPrice').value) || 0;
@@ -492,21 +497,30 @@
         
         const baseCost = materialCost + electricityCost + depreciationCost + laborCost;
         const failureCost = baseCost * (failRate / 100);
-        
-        // Ek donanım birim maliyete (ve grafiğe) dahil edilir
         const trueCost = baseCost + failureCost + hdwrCost; 
         
         const profit = trueCost * (margin / 100);
-        const finalPrice = trueCost + profit; // 1 Adet Saf Satış
+        const baseTargetPrice = trueCost + profit; // Komisyonsuz hedeflenen fiyat
+        
+        // Akıllı Komisyon (Gross-up) Hesaplaması
+        let finalUnitPrice = 0;
+        let commissionCost = 0;
+        
+        if(commPct >= 100) {
+            finalUnitPrice = baseTargetPrice; // Hatalı giriş koruması
+        } else {
+            finalUnitPrice = baseTargetPrice / (1 - (commPct / 100));
+            commissionCost = finalUnitPrice - baseTargetPrice;
+        }
         
         // Genel Sipariş Toplamı (Kargo Ekle, İndirim Düş)
-        const rawTotalOrder = (finalPrice * amount) + shipCost;
+        const rawTotalOrder = (finalUnitPrice * amount) + shipCost;
         const discountAmount = rawTotalOrder * (discPct / 100);
         const grandTotalOrder = rawTotalOrder - discountAmount;
 
         // Ekrana Yazdır
         document.getElementById('totalCost').innerText = trueCost.toFixed(2);
-        document.getElementById('finalPrice').innerText = finalPrice.toFixed(2);
+        document.getElementById('finalPrice').innerText = finalUnitPrice.toFixed(2);
         document.getElementById('grossProfit').innerText = profit.toFixed(2);
         
         document.getElementById('totalOrderPrice').innerText = grandTotalOrder.toFixed(2);
@@ -520,21 +534,21 @@
             orderBreakdown.classList.add('hidden');
         }
 
-        // Grafiği Güncelle
-        updateChart(materialCost, electricityCost, depreciationCost, laborCost, failureCost, hdwrCost, profit);
+        // Grafiği Güncelle (Komisyon turuncu renk eklendi)
+        updateChart(materialCost, electricityCost, depreciationCost, laborCost, failureCost, hdwrCost, commissionCost, profit);
     }
 
-    function updateChart(mat, elec, dep, lab, fail, hdwr, prof) {
+    function updateChart(mat, elec, dep, lab, fail, hdwr, comm, prof) {
         const ctx = document.getElementById('costChart').getContext('2d');
         if (chartInstance) chartInstance.destroy();
 
         chartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Malzeme', 'Elektrik', 'Amortisman', 'İşçilik', 'Fire Payı', 'Ek Donanım', 'Net Kar'],
+                labels: ['Malzeme', 'Elektrik', 'Amortisman', 'İşçilik', 'Fire', 'Ek Donanım', 'Komisyon', 'Net Kar'],
                 datasets: [{
-                    data: [mat, elec, dep, lab, fail, hdwr, prof],
-                    backgroundColor: ['#3b82f6', '#eab308', '#8b5cf6', '#ec4899', '#ef4444', '#0ea5e9', '#22c55e'],
+                    data: [mat, elec, dep, lab, fail, hdwr, comm, prof],
+                    backgroundColor: ['#3b82f6', '#eab308', '#8b5cf6', '#ec4899', '#ef4444', '#0ea5e9', '#f97316', '#22c55e'],
                     borderWidth: 0
                 }]
             },
@@ -548,7 +562,6 @@
     }
 
     window.onload = function() {
-        // İlk açılışta toplam kutusunu göster (Kargo vb. girilirse anlık görsün diye)
         document.getElementById('totalOrderBox').classList.remove('hidden');
         checkAmount();
         calculate();
