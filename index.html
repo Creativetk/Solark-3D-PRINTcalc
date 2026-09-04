@@ -308,17 +308,32 @@
         document.getElementById('generatedCodeBox').classList.add('hidden');
     }
 
-    // YENİ: JSON Dosyası Olarak Bilgisayara İndirme
     function saveToLocal() {
         const prodName = document.getElementById('productName').value || "URUN";
         const cleanName = prodName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 10);
+        
         const now = new Date();
-        const dateStr = now.getFullYear().toString() + (now.getMonth()+1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
+        
+        // Tarih: YYYYMMDD
+        const dateStr = now.getFullYear().toString() + 
+                       (now.getMonth()+1).toString().padStart(2, '0') + 
+                       now.getDate().toString().padStart(2, '0');
+        
+        // Saat: HHMMSSMMM (Saat, Dakika, Saniye, Salise)
+        const timeStr = now.getHours().toString().padStart(2, '0') + 
+                        now.getMinutes().toString().padStart(2, '0') + 
+                        now.getSeconds().toString().padStart(2, '0') + 
+                        now.getMilliseconds().toString().padStart(3, '0');
+
+        // 8 Haneli Rastgele Kod
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         let randomStr = '';
-        for (let i = 0; i < 6; i++) randomStr += chars.charAt(Math.floor(Math.random() * chars.length));
+        for (let i = 0; i < 8; i++) {
+            randomStr += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
 
-        const uniqueCode = `${cleanName}-${dateStr}-${randomStr}`;
+        const uniqueCode = `${cleanName}-${dateStr}-${timeStr}-${randomStr}`;
+        
         document.getElementById('finalCodeDisplay').innerText = uniqueCode;
         document.getElementById('generatedCodeBox').classList.remove('hidden');
         
@@ -354,7 +369,6 @@
         downloadAnchorNode.remove();
     }
 
-    // YENİ: Bilgisayardaki JSON Dosyasını Okuma
     function loadFromLocal(event) {
         const file = event.target.files[0];
         if (!file) return;
