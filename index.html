@@ -459,7 +459,7 @@
         
         const filPrice = parseFloat(document.getElementById('filamentPrice').value) || 0;
         const hdwrCost = parseFloat(document.getElementById('extraHardware').value) || 0; 
-        const commPct = parseFloat(document.getElementById('platformCommission').value) || 0; // Komisyon Yüzdesi
+        const commPct = parseFloat(document.getElementById('platformCommission').value) || 0; 
         const shipCost = parseFloat(document.getElementById('shippingCost').value) || 0; 
         const discPct = parseFloat(document.getElementById('discountPercent').value) || 0; 
 
@@ -483,9 +483,12 @@
             } else if (method === 'bed') {
                 const totalSiparisAgirligi = rawWeight * bedCount;
                 const totalSiparisSuresi = rawTime * bedCount;
+                
                 unitWeight = totalSiparisAgirligi / amount;
                 unitTime = totalSiparisSuresi / amount;
-                unitLaborMins = labMins / amount; 
+                
+                // HATA 1 ÇÖZÜLDÜ: İşçilik süresi tabla sayısıyla çarpılarak toplama dahil edildi
+                unitLaborMins = (labMins * bedCount) / amount; 
             }
         }
 
@@ -500,23 +503,24 @@
         const trueCost = baseCost + failureCost + hdwrCost; 
         
         const profit = trueCost * (margin / 100);
-        const baseTargetPrice = trueCost + profit; // Komisyonsuz hedeflenen fiyat
+        const baseTargetPrice = trueCost + profit; 
         
-        // Akıllı Komisyon (Gross-up) Hesaplaması
+        // Akıllı Komisyon (Gross-up)
         let finalUnitPrice = 0;
         let commissionCost = 0;
         
         if(commPct >= 100) {
-            finalUnitPrice = baseTargetPrice; // Hatalı giriş koruması
+            finalUnitPrice = baseTargetPrice; 
         } else {
             finalUnitPrice = baseTargetPrice / (1 - (commPct / 100));
             commissionCost = finalUnitPrice - baseTargetPrice;
         }
         
-        // Genel Sipariş Toplamı (Kargo Ekle, İndirim Düş)
-        const rawTotalOrder = (finalUnitPrice * amount) + shipCost;
-        const discountAmount = rawTotalOrder * (discPct / 100);
-        const grandTotalOrder = rawTotalOrder - discountAmount;
+        // HATA 2 ÇÖZÜLDÜ: Kargo ve İndirim Sıralaması
+        const productsTotal = finalUnitPrice * amount; // Sadece ürünlerin toplamı
+        const discountAmount = productsTotal * (discPct / 100); // İndirim sadece ürüne uygulanır
+        const discountedProductsTotal = productsTotal - discountAmount; 
+        const grandTotalOrder = discountedProductsTotal + shipCost; // Kargo indirimsiz, saf haliyle en son eklenir
 
         // Ekrana Yazdır
         document.getElementById('totalCost').innerText = trueCost.toFixed(2);
@@ -534,10 +538,9 @@
             orderBreakdown.classList.add('hidden');
         }
 
-        // Grafiği Güncelle (Komisyon turuncu renk eklendi)
+        // Grafiği Güncelle
         updateChart(materialCost, electricityCost, depreciationCost, laborCost, failureCost, hdwrCost, commissionCost, profit);
     }
-
     function updateChart(mat, elec, dep, lab, fail, hdwr, comm, prof) {
         const ctx = document.getElementById('costChart').getContext('2d');
         if (chartInstance) chartInstance.destroy();
