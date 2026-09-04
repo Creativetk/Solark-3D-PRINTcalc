@@ -220,9 +220,16 @@
                 </div>
             </div>
 
-            <button onclick="window.print()" class="w-full bg-slate-200 text-slate-800 font-bold py-3 rounded-xl hover:bg-slate-300 transition-all no-print">
-                Raporu Yazdır (PDF / Çıktı)
-            </button>
+            <!-- İşlem Butonları -->
+            <div class="flex gap-3 no-print">
+                <button onclick="copyOfferText()" class="flex-1 bg-green-500 text-white font-bold py-3 rounded-xl hover:bg-green-600 transition-all flex items-center justify-center gap-2 shadow-sm">
+                    <span>💬 Teklifi Kopyala</span>
+                </button>
+                <button onclick="window.print()" class="flex-1 bg-slate-200 text-slate-800 font-bold py-3 rounded-xl hover:bg-slate-300 transition-all flex items-center justify-center gap-2 shadow-sm">
+                    <span>🖨️ Raporu Yazdır</span>
+                </button>
+            </div>
+            
         </div>
     </div>
 </div>
@@ -333,19 +340,19 @@
 
     function hideCode() {
         document.getElementById('generatedCodeBox').classList.add('hidden');
+        document.getElementById('finalCodeDisplay').innerText = ''; // Yeni veri girildiğinde kodu temizle
     }
 
-    function saveToLocal() {
+    // Kod Üretim Mantığını Tek Bir Yere Topladık
+    function generateUniqueCodeOnly() {
         const prodName = document.getElementById('productName').value || "URUN";
         const cleanName = prodName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 10);
         const initials = (document.getElementById('estimatorInitials').value || "XX").replace(/[^a-zA-Z]/g, '').toUpperCase().substring(0, 3);
         
         const now = new Date();
-        
         const dateStr = now.getFullYear().toString() + 
                        (now.getMonth()+1).toString().padStart(2, '0') + 
                        now.getDate().toString().padStart(2, '0');
-        
         const timeStr = now.getHours().toString().padStart(2, '0') + 
                         now.getMinutes().toString().padStart(2, '0') + 
                         now.getSeconds().toString().padStart(2, '0') + 
@@ -358,9 +365,18 @@
         }
 
         const uniqueCode = `${initials}-${cleanName}-${dateStr}-${timeStr}-${randomStr}`;
-        
         document.getElementById('finalCodeDisplay').innerText = uniqueCode;
         document.getElementById('generatedCodeBox').classList.remove('hidden');
+        return uniqueCode;
+    }
+
+    // Kaydet ve İndir Butonu
+    function saveToLocal() {
+        let uniqueCode = document.getElementById('finalCodeDisplay').innerText;
+        // Eğer ekranda daha önce üretilmiş bir kod yoksa, yeni üret
+        if (!uniqueCode || uniqueCode === "") {
+            uniqueCode = generateUniqueCodeOnly();
+        }
         
         const dataToSave = {
             code: uniqueCode,
@@ -395,6 +411,39 @@
         document.body.appendChild(downloadAnchorNode);
         downloadAnchorNode.click();
         downloadAnchorNode.remove();
+    }
+
+    // Teklifi WhatsApp İçin Kopyala Butonu
+    function copyOfferText() {
+        let uniqueCode = document.getElementById('finalCodeDisplay').innerText;
+        if (!uniqueCode || uniqueCode === "") {
+            uniqueCode = generateUniqueCodeOnly();
+        }
+
+        const productName = document.getElementById('productName').value || "Belirtilmemiş";
+        const amount = document.getElementById('printAmount').value;
+        const orderNote = document.getElementById('orderNote').value;
+        const grandTotal = document.getElementById('totalOrderPrice').innerText;
+        const shipping = parseFloat(document.getElementById('shippingCost').value) || 0;
+        const discount = parseFloat(document.getElementById('discountPercent').value) || 0;
+
+        let text = `📦 *Solark 3D Tech - Sipariş Özeti*\n`;
+        text += `*Ürün:* ${productName}\n`;
+        text += `*Adet:* ${amount}\n`;
+        text += `*Sipariş Kodu:* ${uniqueCode}\n`;
+        
+        if (orderNote) text += `*Not:* ${orderNote}\n`;
+        if (shipping > 0) text += `*Kargo:* ${shipping} ₺\n`;
+        if (discount > 0) text += `*İndirim:* %${discount}\n`;
+        
+        text += `*Genel Toplam:* ${grandTotal} ₺\n\n`;
+        text += `Siparişinizi onaylamak için dönüş yapabilirsiniz. Bizi tercih ettiğiniz için teşekkürler!`;
+
+        navigator.clipboard.writeText(text).then(() => {
+            alert("Teklif metni kopyalandı! WhatsApp veya Instagram'a yapıştırabilirsiniz.");
+        }).catch(err => {
+            alert("Kopyalama başarısız oldu: " + err);
+        });
     }
 
     function loadFromLocal(event) {
@@ -483,16 +532,12 @@
             } else if (method === 'bed') {
                 const totalSiparisAgirligi = rawWeight * bedCount;
                 const totalSiparisSuresi = rawTime * bedCount;
-                
                 unitWeight = totalSiparisAgirligi / amount;
                 unitTime = totalSiparisSuresi / amount;
-                
-                // HATA 1 ÇÖZÜLDÜ: İşçilik süresi tabla sayısıyla çarpılarak toplama dahil edildi
                 unitLaborMins = (labMins * bedCount) / amount; 
             }
         }
 
-        // 1 Adet Maliyetleri
         const materialCost = (filPrice / 1000) * unitWeight;
         const electricityCost = (powerW / 1000) * unitTime * elecPrice;
         const depreciationCost = unitTime * depRate;
@@ -505,7 +550,6 @@
         const profit = trueCost * (margin / 100);
         const baseTargetPrice = trueCost + profit; 
         
-        // Akıllı Komisyon (Gross-up)
         let finalUnitPrice = 0;
         let commissionCost = 0;
         
@@ -516,13 +560,11 @@
             commissionCost = finalUnitPrice - baseTargetPrice;
         }
         
-        // HATA 2 ÇÖZÜLDÜ: Kargo ve İndirim Sıralaması
-        const productsTotal = finalUnitPrice * amount; // Sadece ürünlerin toplamı
-        const discountAmount = productsTotal * (discPct / 100); // İndirim sadece ürüne uygulanır
+        const productsTotal = finalUnitPrice * amount; 
+        const discountAmount = productsTotal * (discPct / 100); 
         const discountedProductsTotal = productsTotal - discountAmount; 
-        const grandTotalOrder = discountedProductsTotal + shipCost; // Kargo indirimsiz, saf haliyle en son eklenir
+        const grandTotalOrder = discountedProductsTotal + shipCost; 
 
-        // Ekrana Yazdır
         document.getElementById('totalCost').innerText = trueCost.toFixed(2);
         document.getElementById('finalPrice').innerText = finalUnitPrice.toFixed(2);
         document.getElementById('grossProfit').innerText = profit.toFixed(2);
@@ -538,9 +580,9 @@
             orderBreakdown.classList.add('hidden');
         }
 
-        // Grafiği Güncelle
         updateChart(materialCost, electricityCost, depreciationCost, laborCost, failureCost, hdwrCost, commissionCost, profit);
     }
+
     function updateChart(mat, elec, dep, lab, fail, hdwr, comm, prof) {
         const ctx = document.getElementById('costChart').getContext('2d');
         if (chartInstance) chartInstance.destroy();
