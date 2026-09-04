@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solark 3D PRINTcalc</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @media print {
+            body { background-color: white !important; padding: 0 !important; }
+            .no-print { display: none !important; }
+            .print-grid { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 20px; }
+            .print-bg-white { background-color: white !important; color: black !important; border: 1px solid #ccc; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 p-4 md:p-8 font-sans text-slate-800">
+
+<div class="max-w-6xl mx-auto">
+    <!-- Üst Bilgi / Logo -->
+    <div class="flex items-center gap-4 mb-8">
+        <img src="1788174644471.jpg" alt="Solark Logo" 
+             onerror="this.outerHTML='<div class=\'w-14 h-14 bg-slate-900 rounded-xl flex items-center justify-center text-white text-2xl shadow-lg\'>📦</div>'" 
+             class="w-14 h-14 rounded-xl shadow-lg object-cover">
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900">Solark <span class="text-blue-600">3D PRINTcalc</span></h1>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 print-grid">
+        
+        <!-- SOL PANEL: Veri Girişi -->
+        <div class="space-y-6 no-print">
+            
+            <!-- Kodu Yükle -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-semibold mb-4">Kayıtlı Kodu Yükle</h2>
+                <div class="flex gap-2">
+                    <input type="text" id="loadCodeInput" placeholder="Örn: URUN-20260904..." class="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
+                    <button onclick="alert('Bulut entegrasyonu (Firebase vb.) bağlandığında bu kod verileri geri getirecektir.')" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-700">Yükle</button>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-semibold mb-4 text-blue-600">Sipariş Bilgileri</h2>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ürün Adı</label>
+                        <input type="text" id="productName" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" placeholder="Örn: Iron Man Kaskı" oninput="hideCode()">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Baskı Adeti</label>
+                        <input type="number" id="printAmount" value="1" min="1" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" oninput="checkAmount(); hideCode(); calculate()">
+                    </div>
+                </div>
+
+                <div id="printMethodContainer" class="hidden mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                    <label class="block text-sm font-medium text-blue-900 mb-2">Baskı Yöntemi (Çoklu Sipariş İçin)</label>
+                    <select id="printMethod" class="w-full px-4 py-2 bg-white border border-blue-200 rounded-lg text-sm" onchange="checkMethod(); calculate(); hideCode()">
+                        <option value="single">Ayrı Ayrı Basılacak (Tekil Veri Girilir, Adetle Çarpılır)</option>
+                        <option value="bed">Tabla Bazlı (1 Tablanın Verisi Girilir, Tabla Sayısıyla Çarpılır)</option>
+                        <option value="total">Tek Tablada / Toplu (Toplam Veri Girilir, Adete Bölünür)</option>
+                    </select>
+                </div>
+
+                <div id="bedCountContainer" class="hidden mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Toplam Kaç Tabla Basılacak?</label>
+                    <input type="number" id="bedCount" value="1" min="1" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" oninput="calculate(); hideCode()">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Sipariş Bilgisi / Müşteri Notu</label>
+                    <textarea id="orderNote" rows="2" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" placeholder="Örn: Soner Bey için doğum günü siparişi (Kırmızı renk, 5 Nisan teslim)" oninput="hideCode()"></textarea>
+                </div>
+
+                <!-- Çok Parçalı Mod -->
+                <div class="mb-4 border-t pt-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="multiPartToggle" class="rounded text-blue-600 focus:ring-blue-500" onchange="toggleMultiPart()">
+                        <span class="text-sm font-medium text-slate-800">Çok Parçalı / Çok Tablalı Ürün Modu</span>
+                    </label>
+                </div>
+
+                <div id="multiPartContainer" class="hidden bg-slate-50 p-4 rounded-lg border border-slate-200 mb-4 space-y-2">
+                    <div id="partList"></div>
+                    <div class="flex gap-2">
+                        <input type="text" id="partName" placeholder="Parça Adı" class="flex-1 px-2 py-1 text-sm border rounded">
+                        <input type="number" id="partWeight" placeholder="Gr" class="w-16 px-2 py-1 text-sm border rounded">
+                        <input type="number" id="partTime" placeholder="Saat" class="w-16 px-2 py-1 text-sm border rounded">
+                        <button onclick="addPart()" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">Ekle</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Maliyet Kalemleri -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                <h2 class="text-lg font-semibold text-slate-800">Maliyet Kalemleri</h2>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500">Filament Fiyatı (1kg / ₺)</label>
+                        <input type="number" id="filamentPrice" value="600" class="w-full px-3 py-2 border rounded-lg mt-1" oninput="calculate(); hideCode()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500">Baskı Ağırlığı (Gram)</label>
+                        <input type="number" id="printWeight" value="150" class="w-full px-3 py-2 border rounded-lg mt-1 bg-white" oninput="calculate(); hideCode()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500">Baskı Süresi (Saat)</label>
+                        <input type="number" id="printTime" value="5" class="w-full px-3 py-2 border rounded-lg mt-1 bg-white" oninput="calculate(); hideCode()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500">Yazıcı Güç Tüketimi (W/s)</label>
+                        <input type="number" id="powerConsumption" value="100" class="w-full px-3 py-2 border rounded-lg mt-1" oninput="calculate(); hideCode()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500">Elektrik Birim Fiyatı (kWh / ₺)</label>
+                        <input type="number" id="electricityPrice" value="2.5" class="w-full px-3 py-2 border rounded-lg mt-1" oninput="calculate(); hideCode()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500">Makine Amortismanı (Saat / ₺)</label>
+                        <input type="number" id="depreciation" value="2.5" class="w-full px-3 py-2 border rounded-lg mt-1" oninput="calculate(); hideCode()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500">İşçilik Süresi (Dakika)</label>
+                        <input type="number" id="laborMinutes" value="15" class="w-full px-3 py-2 border rounded-lg mt-1" oninput="calculate(); hideCode()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500">İşçilik Ücreti (Saat / ₺)</label>
+                        <input type="number" id="laborRate" value="150" class="w-full px-3 py-2 border rounded-lg mt-1" oninput="calculate(); hideCode()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500">Hata/Fire Payı (%)</label>
+                        <input type="number" id="failureRate" value="10" class="w-full px-3 py-2 border rounded-lg mt-1" oninput="calculate(); hideCode()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500">Hedef Kar Marjı (%)</label>
+                        <input type="number" id="profitMargin" value="100" class="w-full px-3 py-2 border rounded-lg mt-1 bg-blue-50 text-blue-700 font-bold" oninput="calculate(); hideCode()">
+                    </div>
+                </div>
+                
+                <!-- Bilgilendirme Notu -->
+                <div class="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-500 leading-relaxed">
+                    <strong>Not:</strong> Yazıcı güç tüketimi Bambu Lab A1 Combo için yaklaşık <strong>80-120 W/s</strong>'dir.<br>
+                    <strong>Makine Amortismanı:</strong> Yazıcının güncel fiyatının, öngörülen ömrüne (saat) bölünmesiyle bulunur.
+                </div>
+            </div>
+
+            <button onclick="saveAndGenerateCode()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-blue-700 transition-all">
+                Hesaplamayı Kaydet & Kod Üret
+            </button>
+        </div>
+
+        <!-- SAĞ PANEL: Sonuçlar & Grafik -->
+        <div class="space-y-6">
+            
+            <!-- Oluşturulan Kod Alanı -->
+            <div id="generatedCodeBox" class="hidden bg-green-50 border border-green-200 p-4 rounded-xl text-center">
+                <span class="block text-xs text-green-700 font-bold uppercase mb-1">Doğrulama & Kayıt Kodu</span>
+                <span id="finalCodeDisplay" class="text-lg font-mono font-bold text-green-900"></span>
+            </div>
+
+            <!-- Toplam Tutar (Sadece Adet > 1 ise görünür) -->
+            <div id="totalOrderBox" class="hidden bg-gradient-to-r from-indigo-500 to-purple-600 p-6 rounded-2xl shadow-lg text-white print-bg-white">
+                <h3 class="text-sm font-medium opacity-90">Toplam Sipariş Tutarı (<span id="displayAmount">X</span> Adet)</h3>
+                <div class="text-4xl font-black mt-2">₺<span id="totalOrderPrice">0.00</span></div>
+            </div>
+
+            <!-- 1 Adet İçin Sonuçlar -->
+            <div class="bg-slate-900 p-6 rounded-2xl shadow-lg text-white print-bg-white">
+                <h2 class="text-sm font-medium text-slate-400 print-bg-white">1 Adet İçin Önerilen Satış Fiyatı</h2>
+                <div class="text-5xl font-black mt-2 text-blue-400 print-bg-white">₺<span id="finalPrice">0.00</span></div>
+                
+                <div class="grid grid-cols-2 gap-4 mt-6 border-t border-slate-700 pt-6 print-bg-white">
+                    <div>
+                        <div class="text-xs text-slate-400 print-bg-white">1 Adet Gerçek Maliyet</div>
+                        <div class="text-xl font-bold mt-1">₺<span id="totalCost">0.00</span></div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-400 print-bg-white">1 Adet Net Kar</div>
+                        <div class="text-xl font-bold mt-1 text-green-400 print-bg-white">₺<span id="grossProfit">0.00</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h3 class="text-sm font-bold text-slate-700 mb-4 text-center">1 Adet İçin Maliyet Dağılımı</h3>
+                <div class="w-full max-w-[250px] mx-auto">
+                    <canvas id="costChart"></canvas>
+                </div>
+            </div>
+
+            <button onclick="window.print()" class="w-full bg-slate-200 text-slate-800 font-bold py-3 rounded-xl hover:bg-slate-300 transition-all no-print">
+                Raporu Yazdır (PDF / Çıktı)
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let chartInstance = null;
+    let parts = [];
+
+    function checkAmount() {
+        const amount = parseInt(document.getElementById('printAmount').value) || 1;
+        const methodContainer = document.getElementById('printMethodContainer');
+        const orderBox = document.getElementById('totalOrderBox');
+        
+        if (amount > 1) {
+            methodContainer.classList.remove('hidden');
+            orderBox.classList.remove('hidden');
+            document.getElementById('displayAmount').innerText = amount;
+        } else {
+            methodContainer.classList.add('hidden');
+            orderBox.classList.add('hidden');
+            document.getElementById('printMethod').value = 'single';
+            checkMethod();
+        }
+    }
+
+    function checkMethod() {
+        const method = document.getElementById('printMethod').value;
+        const bedContainer = document.getElementById('bedCountContainer');
+        if (method === 'bed') {
+            bedContainer.classList.remove('hidden');
+        } else {
+            bedContainer.classList.add('hidden');
+            document.getElementById('bedCount').value = 1;
+        }
+    }
+
+    function toggleMultiPart() {
+        const isMulti = document.getElementById('multiPartToggle').checked;
+        const container = document.getElementById('multiPartContainer');
+        const weightInput = document.getElementById('printWeight');
+        const timeInput = document.getElementById('printTime');
+
+        if (isMulti) {
+            container.classList.remove('hidden');
+            weightInput.readOnly = true;
+            timeInput.readOnly = true;
+            weightInput.classList.add('bg-slate-100');
+            timeInput.classList.add('bg-slate-100');
+        } else {
+            container.classList.add('hidden');
+            weightInput.readOnly = false;
+            timeInput.readOnly = false;
+            weightInput.classList.remove('bg-slate-100');
+            timeInput.classList.remove('bg-slate-100');
+            parts = [];
+            updatePartList();
+        }
+        calculate();
+        hideCode();
+    }
+
+    function addPart() {
+        const name = document.getElementById('partName').value || `Parça ${parts.length + 1}`;
+        const weight = parseFloat(document.getElementById('partWeight').value) || 0;
+        const time = parseFloat(document.getElementById('partTime').value) || 0;
+
+        if (weight > 0 || time > 0) {
+            parts.push({ name, weight, time });
+            document.getElementById('partName').value = '';
+            document.getElementById('partWeight').value = '';
+            document.getElementById('partTime').value = '';
+            updatePartList();
+            hideCode();
+        }
+    }
+
+    function removePart(index) {
+        parts.splice(index, 1);
+        updatePartList();
+        hideCode();
+    }
+
+    function updatePartList() {
+        const list = document.getElementById('partList');
+        list.innerHTML = '';
+        let totalW = 0;
+        let totalT = 0;
+
+        parts.forEach((p, i) => {
+            totalW += p.weight;
+            totalT += p.time;
+            list.innerHTML += `
+                <div class="flex justify-between items-center bg-white p-2 text-sm border rounded">
+                    <span>${p.name}</span>
+                    <div class="flex gap-4 items-center">
+                        <span class="text-slate-500">${p.weight}gr / ${p.time}s</span>
+                        <button onclick="removePart(${i})" class="text-red-500 font-bold px-2 hover:bg-red-50 rounded">X</button>
+                    </div>
+                </div>
+            `;
+        });
+
+        document.getElementById('printWeight').value = totalW || 0;
+        document.getElementById('printTime').value = totalT || 0;
+        calculate();
+    }
+
+    function hideCode() {
+        document.getElementById('generatedCodeBox').classList.add('hidden');
+    }
+
+    function saveAndGenerateCode() {
+        const prodName = document.getElementById('productName').value || "URUN";
+        const cleanName = prodName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 10);
+        
+        const now = new Date();
+        const dateStr = now.getFullYear().toString() + 
+                       (now.getMonth()+1).toString().padStart(2, '0') + 
+                       now.getDate().toString().padStart(2, '0');
+        
+        const timeStr = now.getHours().toString().padStart(2, '0') + 
+                        now.getMinutes().toString().padStart(2, '0') + 
+                        now.getSeconds().toString().padStart(2, '0') + 
+                        now.getMilliseconds().toString().padStart(3, '0');
+
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let randomStr = '';
+        for (let i = 0; i < 8; i++) {
+            randomStr += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+
+        const uniqueCode = `${cleanName}-${dateStr}-${timeStr}-${randomStr}`;
+        
+        document.getElementById('finalCodeDisplay').innerText = uniqueCode;
+        document.getElementById('generatedCodeBox').classList.remove('hidden');
+        
+        // Simüle edilmiş bulut kaydı mesajı
+        console.log("Buluta Kaydedildi: ", uniqueCode);
+    }
+
+    function calculate() {
+        // Ham girdiler
+        let rawWeight = parseFloat(document.getElementById('printWeight').value) || 0;
+        let rawTime = parseFloat(document.getElementById('printTime').value) || 0;
+        
+        const amount = parseInt(document.getElementById('printAmount').value) || 1;
+        const method = document.getElementById('printMethod').value;
+        const bedCount = parseInt(document.getElementById('bedCount').value) || 1;
+        
+        const filPrice = parseFloat(document.getElementById('filamentPrice').value) || 0;
+        const powerW = parseFloat(document.getElementById('powerConsumption').value) || 0;
+        const elecPrice = parseFloat(document.getElementById('electricityPrice').value) || 0;
+        const depRate = parseFloat(document.getElementById('depreciation').value) || 0;
+        const labMins = parseFloat(document.getElementById('laborMinutes').value) || 0;
+        const labRate = parseFloat(document.getElementById('laborRate').value) || 0;
+        const failRate = parseFloat(document.getElementById('failureRate').value) || 0;
+        const margin = parseFloat(document.getElementById('profitMargin').value) || 0;
+
+        // 1 Adet İçin Saf Veriyi Çıkarma Mantığı
+        let unitWeight = rawWeight;
+        let unitTime = rawTime;
+        let unitLaborMins = labMins;
+
+        if (amount > 1) {
+            if (method === 'total') {
+                unitWeight = rawWeight / amount;
+                unitTime = rawTime / amount;
+                unitLaborMins = labMins / amount;
+            } else if (method === 'bed') {
+                const totalSiparisAgirligi = rawWeight * bedCount;
+                const totalSiparisSuresi = rawTime * bedCount;
+                unitWeight = totalSiparisAgirligi / amount;
+                unitTime = totalSiparisSuresi / amount;
+                unitLaborMins = labMins / amount; 
+            }
+            // 'single' ise zaten unit = raw
+        }
+
+        // 1 Adet Maliyet Hesaplamaları
+        const materialCost = (filPrice / 1000) * unitWeight;
+        const electricityCost = (powerW / 1000) * unitTime * elecPrice;
+        const depreciationCost = unitTime * depRate;
+        const laborCost = (unitLaborMins / 60) * labRate;
+        
+        const baseCost = materialCost + electricityCost + depreciationCost + laborCost;
+        const failureCost = baseCost * (failRate / 100);
+        const trueCost = baseCost + failureCost;
+        
+        const profit = trueCost * (margin / 100);
+        const finalPrice = trueCost + profit;
+        
+        const totalOrder = finalPrice * amount;
+
+        // Ekrana Yazdırma
+        document.getElementById('totalCost').innerText = trueCost.toFixed(2);
+        document.getElementById('finalPrice').innerText = finalPrice.toFixed(2);
+        document.getElementById('grossProfit').innerText = profit.toFixed(2);
+        document.getElementById('totalOrderPrice').innerText = totalOrder.toFixed(2);
+
+        updateChart(materialCost, electricityCost, depreciationCost, laborCost, failureCost, profit);
+    }
+
+    function updateChart(mat, elec, dep, lab, fail, prof) {
+        const ctx = document.getElementById('costChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+
+        chartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Malzeme', 'Elektrik', 'Amortisman', 'İşçilik', 'Fire Payı', 'Net Kar'],
+                datasets: [{
+                    data: [mat, elec, dep, lab, fail, prof],
+                    backgroundColor: ['#3b82f6', '#eab308', '#8b5cf6', '#ec4899', '#ef4444', '#22c55e'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, font: {size: 11} } }
+                }
+            }
+        });
+    }
+
+    window.onload = function() {
+        checkAmount();
+        calculate();
+    }
+</script>
+</body>
+</html>
