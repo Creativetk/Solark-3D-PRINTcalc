@@ -9,7 +9,8 @@
     <style>
         /* Standart Yazdırma (Rapor) Stilleri */
         @media print {
-            body { background-color: white !important; padding: 0 !important; }
+            @page { margin: 0; } /* YENİ: Tarayıcının URL ve Tarih eklemesini KESİNLİKLE engeller */
+            body { background-color: white !important; padding: 1.5cm !important; } /* Sayfa kenar boşluklarını manuel verdik */
             .no-print { display: none !important; }
             .print-grid { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 20px; }
             .print-bg-white { background-color: white !important; color: black !important; border: 1px solid #ccc; }
@@ -19,13 +20,12 @@
         @media print {
             body.print-proposal .main-app-container { display: none !important; }
             body.print-proposal .modal-overlay { display: none !important; }
-            body.print-proposal #proposalPrintArea { display: block !important; }
+            body.print-proposal #proposalPrintArea { display: block !important; padding: 0 !important; }
             
             #proposalPrintArea {
                 background-color: white;
                 color: black;
                 font-family: 'Times New Roman', Times, serif;
-                padding: 20px;
                 max-width: 800px;
                 margin: 0 auto;
             }
@@ -84,7 +84,7 @@
                     </div>
                     <div class="col-span-4">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Hesaplayan</label>
-                        <input type="text" id="estimatorInitials" maxlength="3" class="w-full px-4 py-2 bg-blue-50 border border-blue-200 text-blue-900 uppercase font-bold rounded-lg text-sm text-center" placeholder="Örn: AB" oninput="hideCode()">
+                        <input type="text" id="estimatorInitials" maxlength="3" class="w-full px-4 py-2 bg-blue-50 border border-blue-200 text-blue-900 uppercase font-bold rounded-lg text-sm text-center" placeholder="Örn: TK" oninput="hideCode()">
                     </div>
                 </div>
 
@@ -109,7 +109,7 @@
 
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Sipariş Bilgisi / Müşteri Notu</label>
-                    <textarea id="orderNote" rows="2" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" placeholder="Örn: Hediyelik sipariş (Kırmızı renk, 5 Nisan teslim)" oninput="hideCode()"></textarea>
+                    <textarea id="orderNote" rows="2" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" placeholder="Örn: Hediye siparişi (Kırmızı renk, 5 Nisan teslim)" oninput="hideCode()"></textarea>
                 </div>
 
                 <!-- Çok Parçalı Mod -->
@@ -504,7 +504,7 @@
     function generateUniqueCodeOnly() {
         const prodName = document.getElementById('productName').value || "URUN";
         const cleanName = prodName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 10);
-        const initials = (document.getElementById('estimatorInitials').value || "AB").replace(/[^a-zA-Z]/g, '').toUpperCase().substring(0, 3);
+        const initials = (document.getElementById('estimatorInitials').value || "TK").replace(/[^a-zA-Z]/g, '').toUpperCase().substring(0, 3);
         
         const now = new Date();
         const dateStr = now.getFullYear().toString() + 
@@ -813,7 +813,11 @@
         document.getElementById('printDelivery').innerText = deliveryDays;
 
         document.body.classList.add('print-proposal');
-        window.print();
+        
+        // Küçük bir gecikme ile yazdır (CSS'in oturması için)
+        setTimeout(() => {
+            window.print();
+        }, 100);
         
         setTimeout(() => {
             document.body.classList.remove('print-proposal');
