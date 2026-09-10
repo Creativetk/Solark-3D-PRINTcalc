@@ -18,7 +18,9 @@
         /* Kurumsal Teklif Yazdırma Stilleri */
         @media print {
             body.print-proposal .main-app-container { display: none !important; }
+            body.print-proposal .modal-overlay { display: none !important; } /* HATA BURADA ÇÖZÜLDÜ: Giriş ekranını kağıttan gizler */
             body.print-proposal #proposalPrintArea { display: block !important; }
+            
             #proposalPrintArea {
                 background-color: white;
                 color: black;
@@ -744,7 +746,7 @@
 
     // Modal Yönetimi
     function openProposalModal() {
-        calculate(); // Verilerin güncel olduğundan emin olalım
+        calculate(); 
         document.getElementById('proposalModal').style.display = 'flex';
     }
 
@@ -792,7 +794,7 @@
         document.body.classList.add('print-proposal');
         window.print();
         
-        // İşlem bitince orijinal hale dön
+        // İşlem bitince orijinal hale dön (ve modal pencereyi kapat)
         setTimeout(() => {
             document.body.classList.remove('print-proposal');
             closeProposalModal();
