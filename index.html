@@ -84,7 +84,7 @@
                     </div>
                     <div class="col-span-4">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Hesaplayan</label>
-                        <input type="text" id="estimatorInitials" maxlength="3" class="w-full px-4 py-2 bg-blue-50 border border-blue-200 text-blue-900 uppercase font-bold rounded-lg text-sm text-center" placeholder="Örn: TK" oninput="hideCode()">
+                        <input type="text" id="estimatorInitials" maxlength="3" class="w-full px-4 py-2 bg-blue-50 border border-blue-200 text-blue-900 uppercase font-bold rounded-lg text-sm text-center" placeholder="Örn: AB" oninput="hideCode()">
                     </div>
                 </div>
 
@@ -109,7 +109,7 @@
 
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Sipariş Bilgisi / Müşteri Notu</label>
-                    <textarea id="orderNote" rows="2" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" placeholder="Örn: Soner Bey için doğum günü siparişi (Kırmızı renk, 5 Nisan teslim)" oninput="hideCode()"></textarea>
+                    <textarea id="orderNote" rows="2" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" placeholder="Örn: Hediyelik sipariş (Kırmızı renk, 5 Nisan teslim)" oninput="hideCode()"></textarea>
                 </div>
 
                 <!-- Çok Parçalı Mod -->
@@ -264,18 +264,6 @@
                 <button onclick="openProposalModal()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-sm">
                     <span>🏢 Kurumsal Teklif Oluştur (Gider Pusulası)</span>
                 </button>
-                
-                <!-- YENİ: KİŞİSEL ŞABLON SİSTEMİ -->
-                <div class="flex gap-3">
-                    <button onclick="downloadCustomTemplate()" class="flex-1 bg-teal-600 text-white font-bold py-3 rounded-xl hover:bg-teal-700 transition-all flex items-center justify-center gap-2 shadow-sm">
-                        <span>📄 Şablonumu İndir</span>
-                    </button>
-                    <button onclick="document.getElementById('templateInput').click()" class="flex-1 bg-slate-600 text-white font-bold py-3 rounded-xl hover:bg-slate-700 transition-all flex items-center justify-center gap-2 shadow-sm">
-                        <span>⚙️ PC'den Şablon Yükle</span>
-                    </button>
-                    <!-- Gizli Dosya Seçici -->
-                    <input type="file" id="templateInput" class="hidden" accept=".doc,.docx,.pdf" onchange="saveTemplateToLocal(event)">
-                </div>
             </div>
             
         </div>
@@ -287,7 +275,7 @@
     <div class="modal-box">
         <h2 class="text-xl font-bold text-slate-800 mb-4">Kurumsal Teklif Bilgileri</h2>
         
-        <!-- YENİ: KİŞİSEL BİLGİ GİRİŞ ALANI (LOKALDE KAYDEDİLİR) -->
+        <!-- KİŞİSEL BİLGİ GİRİŞ ALANI (LOKALDE KAYDEDİLİR) -->
         <div class="mb-4 pb-4 border-b border-slate-200">
             <h3 class="text-sm font-bold text-blue-600 mb-3">Sizin Bilgileriniz (Sadece PC'nizde Kayıtlı Kalır)</h3>
             <div class="space-y-3">
@@ -335,7 +323,7 @@
         <div>Teklif No: <span id="printQuoteNo"></span></div>
     </div>
 
-    <!-- IBAN VE İSİM ALANI BURAYA DİNAMİK EKLENDİ -->
+    <!-- IBAN VE İSİM ALANI -->
     <h2 style="font-size: 16px; font-weight: bold; background-color: #f2f2f2; padding: 5px;">1. Taraf Bilgileri</h2>
     <table>
         <tr>
@@ -516,7 +504,7 @@
     function generateUniqueCodeOnly() {
         const prodName = document.getElementById('productName').value || "URUN";
         const cleanName = prodName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 10);
-        const initials = (document.getElementById('estimatorInitials').value || "TK").replace(/[^a-zA-Z]/g, '').toUpperCase().substring(0, 3);
+        const initials = (document.getElementById('estimatorInitials').value || "AB").replace(/[^a-zA-Z]/g, '').toUpperCase().substring(0, 3);
         
         const now = new Date();
         const dateStr = now.getFullYear().toString() + 
@@ -775,7 +763,6 @@
     // Modal Yönetimi & Lokal Hafızaya Bilgi Kaydetme
     function openProposalModal() {
         calculate(); 
-        // Tarayıcı hafızasından kişisel bilgileri çekip forma yazdır
         document.getElementById('sellerName').value = localStorage.getItem('solark_seller_name') || '';
         document.getElementById('sellerIban').value = localStorage.getItem('solark_seller_iban') || '';
         document.getElementById('proposalModal').style.display = 'flex';
@@ -790,7 +777,6 @@
         const contactInfo = document.getElementById('propContact').value || "-";
         const deliveryDays = document.getElementById('propDeliveryDays').value || "3";
         
-        // Kişisel bilgileri oku ve tarayıcıya kaydet
         const sellerName = document.getElementById('sellerName').value || "Belirtilmemiş";
         const sellerIban = document.getElementById('sellerIban').value || "Belirtilmemiş";
         localStorage.setItem('solark_seller_name', sellerName);
@@ -809,13 +795,11 @@
         const grandTotal = document.getElementById('totalOrderPrice').innerText;
         const rawProductsTotal = parseFloat(unitPrice.replace('.', '').replace(',', '.')) * parseInt(amount);
 
-        // Dinamik yazdırma alanını doldur
         document.getElementById('printDate').innerText = dateString;
         document.getElementById('printQuoteNo').innerText = uniqueCode;
         document.getElementById('printClientName').innerText = clientName;
         document.getElementById('printContact').innerText = contactInfo;
         
-        // İsminizi ve IBAN'ı evraka yansıt
         document.getElementById('printSellerName').innerText = sellerName;
         document.getElementById('printSellerNameFooter').innerText = sellerName;
         document.getElementById('printSellerIban').innerText = sellerIban;
@@ -835,48 +819,6 @@
             document.body.classList.remove('print-proposal');
             closeProposalModal();
         }, 500);
-    }
-
-    // KİŞİSEL ŞABLON YÖNETİMİ (Yerel Tarayıcı Hafızası)
-    function saveTemplateToLocal(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        if (file.size > 2 * 1024 * 1024) { 
-            alert("Dosya çok büyük! Lütfen 2MB'tan küçük bir belge (Word/PDF) seçin.");
-            event.target.value = '';
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                localStorage.setItem('solark_custom_template', e.target.result);
-                localStorage.setItem('solark_custom_template_name', file.name);
-                alert("✅ '" + file.name + "' başarıyla tarayıcı hafızasına kaydedildi!\n\nArtık 'Şablonumu İndir' butonuna basarak kişisel belgenize internet olmadan anında ulaşabilirsiniz.");
-            } catch(err) {
-                alert("Tarayıcı hafızası dolu veya dosya kaydedilemedi.");
-            }
-        };
-        reader.readAsDataURL(file);
-        event.target.value = ''; 
-    }
-
-    function downloadCustomTemplate() {
-        const data = localStorage.getItem('solark_custom_template');
-        const name = localStorage.getItem('solark_custom_template_name') || 'Sablon.docx';
-
-        if (!data) {
-            alert("⚠️ Henüz bir şablon yüklemediniz!\n\nLütfen önce '⚙️ PC'den Şablon Yükle' butonunu kullanarak bilgisayarınızdan boş bir belge seçin. Bu belge sadece sizin tarayıcınızda gizli kalacaktır.");
-            return;
-        }
-
-        const a = document.createElement('a');
-        a.href = data;
-        a.download = name;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
     }
 
     window.onload = function() {
