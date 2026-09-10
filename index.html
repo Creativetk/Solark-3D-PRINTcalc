@@ -84,7 +84,7 @@
                     </div>
                     <div class="col-span-4">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Hesaplayan</label>
-                        <input type="text" id="estimatorInitials" maxlength="3" class="w-full px-4 py-2 bg-blue-50 border border-blue-200 text-blue-900 uppercase font-bold rounded-lg text-sm text-center" placeholder="Örn: AB" oninput="hideCode()">
+                        <input type="text" id="estimatorInitials" maxlength="3" class="w-full px-4 py-2 bg-blue-50 border border-blue-200 text-blue-900 uppercase font-bold rounded-lg text-sm text-center" placeholder="Örn: TK" oninput="hideCode()">
                     </div>
                 </div>
 
@@ -109,7 +109,7 @@
 
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Sipariş Bilgisi / Müşteri Notu</label>
-                    <textarea id="orderNote" rows="2" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" placeholder="Örn: Hediyelik sipariş (Kırmızı renk, 5 Nisan teslim)" oninput="hideCode()"></textarea>
+                    <textarea id="orderNote" rows="2" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" placeholder="Örn: Soner Bey için doğum günü siparişi (Kırmızı renk, 5 Nisan teslim)" oninput="hideCode()"></textarea>
                 </div>
 
                 <!-- Çok Parçalı Mod -->
@@ -286,14 +286,31 @@
 <div id="proposalModal" class="modal-overlay">
     <div class="modal-box">
         <h2 class="text-xl font-bold text-slate-800 mb-4">Kurumsal Teklif Bilgileri</h2>
+        
+        <!-- YENİ: KİŞİSEL BİLGİ GİRİŞ ALANI (LOKALDE KAYDEDİLİR) -->
+        <div class="mb-4 pb-4 border-b border-slate-200">
+            <h3 class="text-sm font-bold text-blue-600 mb-3">Sizin Bilgileriniz (Sadece PC'nizde Kayıtlı Kalır)</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Adınız Soyadınız</label>
+                    <input type="text" id="sellerName" class="w-full px-4 py-2 border border-blue-200 rounded-lg bg-blue-50" placeholder="Örn: Ahmet Yılmaz">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Ticari Muafiyet IBAN'ınız</label>
+                    <input type="text" id="sellerIban" class="w-full px-4 py-2 border border-blue-200 rounded-lg bg-blue-50" placeholder="TR00 0000 0000 0000 0000 0000 00">
+                </div>
+            </div>
+        </div>
+
         <div class="space-y-4">
+            <h3 class="text-sm font-bold text-slate-600 mb-2">Müşteri Bilgileri</h3>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Müşteri / Firma Unvanı</label>
                 <input type="text" id="propClientName" class="w-full px-4 py-2 border rounded-lg" placeholder="Örn: ABC Teknoloji A.Ş.">
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">İlgili Kişi / V.D. No</label>
-                <input type="text" id="propContact" class="w-full px-4 py-2 border rounded-lg" placeholder="Örn: Ahmet Yılmaz - 1234567890">
+                <input type="text" id="propContact" class="w-full px-4 py-2 border rounded-lg" placeholder="Örn: Ayşe Yılmaz - 1234567890">
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Teslimat Süresi (İş Günü)</label>
@@ -318,14 +335,16 @@
         <div>Teklif No: <span id="printQuoteNo"></span></div>
     </div>
 
+    <!-- IBAN VE İSİM ALANI BURAYA DİNAMİK EKLENDİ -->
     <h2 style="font-size: 16px; font-weight: bold; background-color: #f2f2f2; padding: 5px;">1. Taraf Bilgileri</h2>
     <table>
         <tr>
             <td style="width: 50%; border: none;">
                 <strong>Hizmet Sağlayıcı (Yüklenici)</strong><br>
-                <strong>Ad Soyad:</strong> Taner Kutlu<br>
+                <strong>Ad Soyad:</strong> <span id="printSellerName"></span><br>
                 <strong>Unvan:</strong> Solark 3D Tech (3D Tasarım & Hızlı Prototipleme)<br>
-                <strong>Statü:</strong> Esnaf Vergi Muafiyeti (GVK Md. 9/10)
+                <strong>Statü:</strong> Esnaf Vergi Muafiyeti (GVK Md. 9/10)<br>
+                <strong>Ticari IBAN:</strong> <span id="printSellerIban"></span>
             </td>
             <td style="width: 50%; border: none;">
                 <strong>Hizmet Alan (Müşteri)</strong><br>
@@ -377,7 +396,7 @@
 
     <div style="display: flex; justify-content: space-between; margin-top: 50px;">
         <div style="text-align: center;">
-            <strong>Hizmet Sağlayıcı</strong><br><br>Taner Kutlu<br>Solark 3D Tech
+            <strong>Hizmet Sağlayıcı</strong><br><br><span id="printSellerNameFooter"></span><br>Solark 3D Tech
         </div>
         <div style="text-align: center;">
             <strong>Müşteri Firma Onayı (Kaşe/İmza)</strong><br><br>.............................................
@@ -497,7 +516,7 @@
     function generateUniqueCodeOnly() {
         const prodName = document.getElementById('productName').value || "URUN";
         const cleanName = prodName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 10);
-        const initials = (document.getElementById('estimatorInitials').value || "AB").replace(/[^a-zA-Z]/g, '').toUpperCase().substring(0, 3);
+        const initials = (document.getElementById('estimatorInitials').value || "TK").replace(/[^a-zA-Z]/g, '').toUpperCase().substring(0, 3);
         
         const now = new Date();
         const dateStr = now.getFullYear().toString() + 
@@ -753,9 +772,12 @@
         });
     }
 
-    // Modal Yönetimi
+    // Modal Yönetimi & Lokal Hafızaya Bilgi Kaydetme
     function openProposalModal() {
         calculate(); 
+        // Tarayıcı hafızasından kişisel bilgileri çekip forma yazdır
+        document.getElementById('sellerName').value = localStorage.getItem('solark_seller_name') || '';
+        document.getElementById('sellerIban').value = localStorage.getItem('solark_seller_iban') || '';
         document.getElementById('proposalModal').style.display = 'flex';
     }
 
@@ -768,6 +790,12 @@
         const contactInfo = document.getElementById('propContact').value || "-";
         const deliveryDays = document.getElementById('propDeliveryDays').value || "3";
         
+        // Kişisel bilgileri oku ve tarayıcıya kaydet
+        const sellerName = document.getElementById('sellerName').value || "Belirtilmemiş";
+        const sellerIban = document.getElementById('sellerIban').value || "Belirtilmemiş";
+        localStorage.setItem('solark_seller_name', sellerName);
+        localStorage.setItem('solark_seller_iban', sellerIban);
+
         let uniqueCode = document.getElementById('finalCodeDisplay').innerText;
         if (!uniqueCode || uniqueCode === "") uniqueCode = generateUniqueCodeOnly();
         
@@ -781,10 +809,17 @@
         const grandTotal = document.getElementById('totalOrderPrice').innerText;
         const rawProductsTotal = parseFloat(unitPrice.replace('.', '').replace(',', '.')) * parseInt(amount);
 
+        // Dinamik yazdırma alanını doldur
         document.getElementById('printDate').innerText = dateString;
         document.getElementById('printQuoteNo').innerText = uniqueCode;
         document.getElementById('printClientName').innerText = clientName;
         document.getElementById('printContact').innerText = contactInfo;
+        
+        // İsminizi ve IBAN'ı evraka yansıt
+        document.getElementById('printSellerName').innerText = sellerName;
+        document.getElementById('printSellerNameFooter').innerText = sellerName;
+        document.getElementById('printSellerIban').innerText = sellerIban;
+
         document.getElementById('printItemName').innerText = productName;
         document.getElementById('printItemQty').innerText = amount;
         document.getElementById('printUnitPrice').innerText = unitPrice + " ₺";
@@ -807,7 +842,6 @@
         const file = event.target.files[0];
         if (!file) return;
 
-        // Dosya boyutu kontrolü (Örn: 2MB sınır)
         if (file.size > 2 * 1024 * 1024) { 
             alert("Dosya çok büyük! Lütfen 2MB'tan küçük bir belge (Word/PDF) seçin.");
             event.target.value = '';
